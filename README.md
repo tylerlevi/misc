@@ -14,6 +14,9 @@ This project trains a **screen-reading evolutionary agent** for Kingdom Rush wit
   - repeated evaluation with median fitness
   - epsilon + temperature exploration schedule
   - novelty search bonus (behavioral diversity)
+- **Smarter interaction**:
+  - auto-detect build spots from map geometry
+  - auto-detect start/continue buttons to begin/end levels faster
 - **Better UX**:
   - dry-run mode
   - checkpoint/resume
@@ -57,6 +60,17 @@ kr-train --progress-log ./runs/progress.txt
 ```
 
 The log includes notes like `new_best` or `stagnant_3` to explain what the run is doing.
+
+
+## Auto-start + auto-build behavior
+
+At the start of each episode, the bot now:
+
+1. Scans the frame for likely circular tower build pads.
+2. Scans for orange/yellow start/continue buttons.
+3. Runs a deterministic opening (`build_archer`, `build_mage`, then `start_wave`) before RL actions.
+
+If detection fails, it falls back to your configured action coordinates.
 
 ## Optional custom actions JSON
 

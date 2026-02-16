@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 import time
 
 import numpy as np
@@ -40,7 +41,7 @@ class EvolutionTrainer:
         config: TrainingBundle,
         region: ScreenRegion,
         executor: ActionExecutor,
-        progress_log: str | None = None,
+        progress_log: Path | None = None,
     ) -> None:
         self.cfg = config
         self.encoder = VisionEncoder(region=region, config=config.vision)

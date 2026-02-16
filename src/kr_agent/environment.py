@@ -85,6 +85,9 @@ class KingdomRushEnvironment:
         )
 
     def reset(self) -> np.ndarray:
+        frame = self.encoder.capture_raw_bgr()
+        self.executor.update_targets(frame)
+        self.executor.bootstrap_opening()
         state = self.encoder.reset_stack()
         self._last_state = state
         return state
@@ -96,6 +99,7 @@ class KingdomRushEnvironment:
         for _ in range(self.action_repeat):
             self.executor.execute(action_index)
             time.sleep(self.capture_interval_s)
+            self.executor.update_targets(self.encoder.capture_raw_bgr())
             state = self.encoder.capture()
             latest_metrics = self.reward_shaper.metrics(state, self._last_state)
             total_reward += self.reward_shaper.score(state, self._last_state)
