@@ -34,7 +34,13 @@ class ActionExecutor:
         self.click_jitter_px = click_jitter_px
         self.dry_run = dry_run
         self._ui = KRUIAnalyzer()
-        self._targets = UITargets(build_spots=[], start_wave=None, continue_button=None, kr_confidence=0.0)
+        self._targets = UITargets(
+            build_spots=[],
+            start_wave=None,
+            continue_button=None,
+            kr_confidence=0.0,
+            menu_buttons={},
+        )
         self._build_index = 0
         self._frame_shape: tuple[int, int] | None = None
 
@@ -48,10 +54,17 @@ class ActionExecutor:
         self._frame_shape = (w, h)
 
     def bootstrap_opening(self) -> None:
-        """Deterministic opening so training starts waves/towers quickly."""
+        """Deterministic bootstrapping for Steam menu + early battle flow."""
         if self._targets.kr_confidence < 0.30:
             return
 
+        # If in meta/menu screens, click obvious buttons first.
+        for name in ("close_panel", "enemy_encyclopedia", "upgrades", "start_game"):
+            if name in self._targets.menu_buttons:
+                self._click_point(self._targets.menu_buttons[name])
+                time.sleep(self.click_delay)
+
+        # If in battle, run fast opening setup.
         opening = [
             self._find_action("build_archer"),
             self._find_action("build_mage"),
@@ -64,19 +77,7 @@ class ActionExecutor:
     def execute(self, index: int) -> None:
         action = self.actions[index % len(self.actions)]
         x, y = self._resolve_target(action)
-
-        if self.dry_run:
-            time.sleep(self.click_delay)
-            return
-
-        import pyautogui  # lazy import for headless/test compatibility
-
-        x += random.randint(-self.click_jitter_px, self.click_jitter_px)
-        y += random.randint(-self.click_jitter_px, self.click_jitter_px)
-        if action.hotkey:
-            pyautogui.press(action.hotkey)
-        pyautogui.click(int(x), int(y))
-        time.sleep(self.click_delay)
+        self._click_point((x, y), hotkey=action.hotkey)
 
     def _resolve_target(self, action: Action) -> tuple[int, int]:
         if action.name.startswith("build_") and self._targets.build_spots:
@@ -90,14 +91,31 @@ class ActionExecutor:
             if self._targets.continue_button is not None:
                 return self._targets.continue_button
 
+        if action.name in self._targets.menu_buttons:
+            return self._targets.menu_buttons[action.name]
+
         return self._to_screen_point(action.x, action.y)
 
     def _to_screen_point(self, x: float, y: float) -> tuple[int, int]:
-        # If in [0,1], treat as normalized to current capture resolution.
         if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 and self._frame_shape is not None:
             width, height = self._frame_shape
             return int(x * width), int(y * height)
         return int(x), int(y)
+
+    def _click_point(self, point: tuple[int, int], hotkey: str | None = None) -> None:
+        x, y = point
+        if self.dry_run:
+            time.sleep(self.click_delay)
+            return
+
+        import pyautogui
+
+        x += random.randint(-self.click_jitter_px, self.click_jitter_px)
+        y += random.randint(-self.click_jitter_px, self.click_jitter_px)
+        if hotkey:
+            pyautogui.press(hotkey)
+        pyautogui.click(int(x), int(y))
+        time.sleep(self.click_delay)
 
     def _find_action(self, name: str) -> int | None:
         for i, action in enumerate(self.actions):
@@ -120,6 +138,10 @@ def default_actions() -> list[Action]:
         Action("reinforcements", 0.762, 0.920, "r"),
         Action("meteor", 0.719, 0.920, "f"),
         Action("start_wave", 0.925, 0.960),
+        Action("start_game", 0.820, 0.835),
+        Action("upgrades", 0.810, 0.455),
+        Action("enemy_encyclopedia", 0.810, 0.260),
+        Action("close_panel", 0.915, 0.095),
         Action("idle_observe", 0.031, 0.050),
     ]
 

@@ -21,8 +21,8 @@ def parse_args() -> argparse.Namespace:
     # Screen region
     parser.add_argument("--left", type=int, default=0)
     parser.add_argument("--top", type=int, default=0)
-    parser.add_argument("--width", type=int, default=1600)
-    parser.add_argument("--height", type=int, default=1000)
+    parser.add_argument("--width", type=int, default=1920)
+    parser.add_argument("--height", type=int, default=1080)
 
     # Vision and state
     parser.add_argument("--state-width", type=int, default=32)

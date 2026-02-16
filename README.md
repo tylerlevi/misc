@@ -1,6 +1,6 @@
-# Kingdom Rush Evolutionary RL Agent
+# Kingdom Rush Evolutionary RL Agent (Steam PC Focus)
 
-This project trains a **screen-reading evolutionary agent** for Kingdom Rush with a cleaner architecture and better defaults for stability.
+This project trains a **screen-reading evolutionary agent** for Kingdom Rush, tuned to work best with the **Steam PC fullscreen 1920x1080** version.
 
 ## What is improved
 
@@ -14,10 +14,12 @@ This project trains a **screen-reading evolutionary agent** for Kingdom Rush wit
   - repeated evaluation with median fitness
   - epsilon + temperature exploration schedule
   - novelty search bonus (behavioral diversity)
-- **Smarter interaction**:
-  - auto-detect build spots with scale-aware circle + contour detection
-  - auto-detect start/continue buttons to begin/end levels faster
+- **Smarter interaction (Steam-ready)**:
+  - scale-aware build-spot detection (works across resolutions)
+  - detection of start/continue button
+  - detection of menu buttons like `start_game`, `upgrades`, `enemy_encyclopedia`, `close_panel`
   - normalized fallback coordinates so different resolutions still work
+  - deterministic opening sequence so levels start quickly
 - **Better UX**:
   - dry-run mode
   - checkpoint/resume
@@ -34,11 +36,11 @@ source .venv/bin/activate
 pip install -e .[dev]
 ```
 
-## Fast start
+## Fast start (recommended Steam fullscreen)
 
 ```bash
 kr-train \
-  --left 0 --top 0 --width 1600 --height 1000 \
+  --left 0 --top 0 --width 1920 --height 1080 \
   --generations 80 --population 32 --episode-seconds 90
 ```
 
@@ -62,14 +64,13 @@ kr-train --progress-log ./runs/progress.txt
 
 The log includes notes like `new_best` or `stagnant_3` to explain what the run is doing.
 
-
 ## Auto-start + auto-build behavior
 
 At the start of each episode, the bot now:
 
 1. Scans the frame for likely circular tower build pads.
-2. Scans for orange/yellow start/continue buttons.
-3. Runs a deterministic opening (`build_archer`, `build_mage`, then `start_wave`) before RL actions.
+2. Scans for start/continue and Steam UI menu buttons.
+3. Runs deterministic bootstrap actions (`build_archer`, `build_mage`, then `start_wave`) before RL actions.
 
 If detection fails, it falls back to normalized action coordinates that scale with your capture size.
 
@@ -77,8 +78,9 @@ If detection fails, it falls back to normalized action coordinates that scale wi
 
 ```json
 [
-  {"name": "build_archer", "x": 250, "y": 900, "hotkey": "1"},
-  {"name": "start_wave", "x": 1480, "y": 960}
+  {"name": "build_archer", "x": 0.156, "y": 0.9, "hotkey": "1"},
+  {"name": "start_wave", "x": 0.925, "y": 0.96},
+  {"name": "upgrades", "x": 0.81, "y": 0.455}
 ]
 ```
 
@@ -90,8 +92,8 @@ kr-train --actions-file ./my_actions.json
 
 ## Practical tuning
 
-1. Increase `--population` before increasing episode length.
-2. Keep `--evaluation-repeats` at `2` or `3` for stability.
-3. Use `--frame-stack 3` (default) unless your machine is very slow.
-4. Adjust `--epsilon-*`, `--temperature-*`, and `--novelty-*` when exploration is too random or too greedy.
-5. Calibrate action coordinates first (most important).
+1. Start with fullscreen 1920x1080 if possible.
+2. Increase `--population` before increasing episode length.
+3. Keep `--evaluation-repeats` at `2` or `3` for stability.
+4. Use `--frame-stack 3` (default) unless your machine is very slow.
+5. Adjust `--epsilon-*`, `--temperature-*`, and `--novelty-*` when exploration is too random or too greedy.
