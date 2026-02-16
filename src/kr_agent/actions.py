@@ -14,8 +14,8 @@ from .ui import KRUIAnalyzer, UITargets
 @dataclass(slots=True)
 class Action:
     name: str
-    x: int
-    y: int
+    x: float
+    y: float
     hotkey: str | None = None
 
 
@@ -34,8 +34,9 @@ class ActionExecutor:
         self.click_jitter_px = click_jitter_px
         self.dry_run = dry_run
         self._ui = KRUIAnalyzer()
-        self._targets = UITargets(build_spots=[], start_wave=None, continue_button=None)
+        self._targets = UITargets(build_spots=[], start_wave=None, continue_button=None, kr_confidence=0.0)
         self._build_index = 0
+        self._frame_shape: tuple[int, int] | None = None
 
     @property
     def size(self) -> int:
@@ -43,9 +44,14 @@ class ActionExecutor:
 
     def update_targets(self, frame_bgr: np.ndarray) -> None:
         self._targets = self._ui.detect(frame_bgr)
+        h, w = frame_bgr.shape[:2]
+        self._frame_shape = (w, h)
 
     def bootstrap_opening(self) -> None:
         """Deterministic opening so training starts waves/towers quickly."""
+        if self._targets.kr_confidence < 0.30:
+            return
+
         opening = [
             self._find_action("build_archer"),
             self._find_action("build_mage"),
@@ -69,7 +75,7 @@ class ActionExecutor:
         y += random.randint(-self.click_jitter_px, self.click_jitter_px)
         if action.hotkey:
             pyautogui.press(action.hotkey)
-        pyautogui.click(x, y)
+        pyautogui.click(int(x), int(y))
         time.sleep(self.click_delay)
 
     def _resolve_target(self, action: Action) -> tuple[int, int]:
@@ -84,7 +90,14 @@ class ActionExecutor:
             if self._targets.continue_button is not None:
                 return self._targets.continue_button
 
-        return action.x, action.y
+        return self._to_screen_point(action.x, action.y)
+
+    def _to_screen_point(self, x: float, y: float) -> tuple[int, int]:
+        # If in [0,1], treat as normalized to current capture resolution.
+        if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 and self._frame_shape is not None:
+            width, height = self._frame_shape
+            return int(x * width), int(y * height)
+        return int(x), int(y)
 
     def _find_action(self, name: str) -> int | None:
         for i, action in enumerate(self.actions):
@@ -94,19 +107,20 @@ class ActionExecutor:
 
 
 def default_actions() -> list[Action]:
+    # Normalized coordinates so fallback remains resolution-independent.
     return [
-        Action("build_archer", 250, 900, "1"),
-        Action("build_mage", 315, 900, "2"),
-        Action("build_barracks", 380, 900, "3"),
-        Action("build_artillery", 450, 900, "4"),
-        Action("rally_near_spawn", 540, 350),
-        Action("rally_mid", 760, 480),
-        Action("rally_end", 1090, 580),
-        Action("hero_ability", 1300, 920, "space"),
-        Action("reinforcements", 1220, 920, "r"),
-        Action("meteor", 1150, 920, "f"),
-        Action("start_wave", 1480, 960),
-        Action("idle_observe", 50, 50),
+        Action("build_archer", 0.156, 0.900, "1"),
+        Action("build_mage", 0.197, 0.900, "2"),
+        Action("build_barracks", 0.238, 0.900, "3"),
+        Action("build_artillery", 0.281, 0.900, "4"),
+        Action("rally_near_spawn", 0.337, 0.350),
+        Action("rally_mid", 0.475, 0.480),
+        Action("rally_end", 0.681, 0.580),
+        Action("hero_ability", 0.812, 0.920, "space"),
+        Action("reinforcements", 0.762, 0.920, "r"),
+        Action("meteor", 0.719, 0.920, "f"),
+        Action("start_wave", 0.925, 0.960),
+        Action("idle_observe", 0.031, 0.050),
     ]
 
 

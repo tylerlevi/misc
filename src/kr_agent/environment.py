@@ -85,8 +85,11 @@ class KingdomRushEnvironment:
         )
 
     def reset(self) -> np.ndarray:
-        frame = self.encoder.capture_raw_bgr()
-        self.executor.update_targets(frame)
+        # Prime UI detection with a few snapshots for stability across resolutions and effects.
+        for _ in range(3):
+            frame = self.encoder.capture_raw_bgr()
+            self.executor.update_targets(frame)
+            time.sleep(0.03)
         self.executor.bootstrap_opening()
         state = self.encoder.reset_stack()
         self._last_state = state

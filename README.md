@@ -15,8 +15,9 @@ This project trains a **screen-reading evolutionary agent** for Kingdom Rush wit
   - epsilon + temperature exploration schedule
   - novelty search bonus (behavioral diversity)
 - **Smarter interaction**:
-  - auto-detect build spots from map geometry
+  - auto-detect build spots with scale-aware circle + contour detection
   - auto-detect start/continue buttons to begin/end levels faster
+  - normalized fallback coordinates so different resolutions still work
 - **Better UX**:
   - dry-run mode
   - checkpoint/resume
@@ -70,7 +71,7 @@ At the start of each episode, the bot now:
 2. Scans for orange/yellow start/continue buttons.
 3. Runs a deterministic opening (`build_archer`, `build_mage`, then `start_wave`) before RL actions.
 
-If detection fails, it falls back to your configured action coordinates.
+If detection fails, it falls back to normalized action coordinates that scale with your capture size.
 
 ## Optional custom actions JSON
 
