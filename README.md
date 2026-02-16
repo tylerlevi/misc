@@ -77,6 +77,8 @@ At the start of each episode, the bot now:
 1. Scans the frame for likely circular tower build pads.
 2. Scans for start/continue and Steam UI menu buttons.
 3. Runs deterministic bootstrap actions (`build_archer`, `build_mage`, then `start_wave`) before RL actions.
+4. If `Hero Room` has no available heroes, closes it automatically.
+5. If `Upgrades` has no available upgrade points, closes it automatically.
 
 If detection fails, it falls back to normalized action coordinates that scale with your capture size.
 

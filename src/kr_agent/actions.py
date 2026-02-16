@@ -40,6 +40,12 @@ class ActionExecutor:
             continue_button=None,
             kr_confidence=0.0,
             menu_buttons={},
+            popup_done=None,
+            popup_close=None,
+            hero_room_open=False,
+            upgrades_open=False,
+            upgrades_points_available=False,
+            heroes_available=False,
         )
         self._build_index = 0
         self._frame_shape: tuple[int, int] | None = None
@@ -58,11 +64,21 @@ class ActionExecutor:
         if self._targets.kr_confidence < 0.30:
             return
 
-        # If in meta/menu screens, click obvious buttons first.
-        for name in ("close_panel", "enemy_encyclopedia", "upgrades", "start_game"):
-            if name in self._targets.menu_buttons:
-                self._click_point(self._targets.menu_buttons[name])
-                time.sleep(self.click_delay)
+        # Handle hero/upgrades popups first.
+        if self._targets.upgrades_open:
+            if not self._targets.upgrades_points_available:
+                self._close_popup("no_upgrade_points")
+                return
+
+        if self._targets.hero_room_open:
+            if not self._targets.heroes_available:
+                self._close_popup("no_heroes_available")
+                return
+
+        # From world map: prioritize starting a game, do not randomly open side menus.
+        if "start_game" in self._targets.menu_buttons:
+            self._click_point(self._targets.menu_buttons["start_game"])
+            time.sleep(self.click_delay)
 
         # If in battle, run fast opening setup.
         opening = [
@@ -117,6 +133,11 @@ class ActionExecutor:
         pyautogui.click(int(x), int(y))
         time.sleep(self.click_delay)
 
+    def _close_popup(self, reason: str) -> None:
+        target = self._targets.popup_done or self._targets.popup_close or self._targets.menu_buttons.get("close_panel")
+        if target is not None:
+            self._click_point(target)
+
     def _find_action(self, name: str) -> int | None:
         for i, action in enumerate(self.actions):
             if action.name == name:
@@ -141,6 +162,7 @@ def default_actions() -> list[Action]:
         Action("start_game", 0.820, 0.835),
         Action("upgrades", 0.810, 0.455),
         Action("enemy_encyclopedia", 0.810, 0.260),
+        Action("hero_room", 0.810, 0.660),
         Action("close_panel", 0.915, 0.095),
         Action("idle_observe", 0.031, 0.050),
     ]
