@@ -26,7 +26,7 @@ This project trains a **screen-reading evolutionary agent** for Kingdom Rush, tu
   - optional action JSON file (`--actions-file`)
   - optional boot-screen waiting
   - CLI knobs for exploration/reward/novelty weights
-  - optional progress log file for explanations (`--progress-log`)
+  - end-of-run report files in `reports/` (no noisy live spam)
 
 ## Install
 
@@ -56,13 +56,19 @@ kr-train --dry-run --generations 2 --population 4 --episode-seconds 3
 kr-train --resume-from checkpoints/best_gen_0010.npz
 ```
 
-## Progress log (chatbox-style updates)
+## End-of-run report
+
+After each training run, a report is written to `reports/run_report_*.txt` including:
+
+- best/mean/std fitness trends
+- last exploration/mutation settings
+- next-focus recommendations for resume
+
+Use a custom folder if desired:
 
 ```bash
-kr-train --progress-log ./runs/progress.txt
+kr-train --report-dir ./reports
 ```
-
-The log includes notes like `new_best` or `stagnant_3` to explain what the run is doing.
 
 ## Auto-start + auto-build behavior
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 import time
 
@@ -20,7 +21,6 @@ from .config import (
 from .environment import KingdomRushEnvironment
 from .evolution import Evolver
 from .model import Genome, PolicyNetwork
-from .progress import ProgressMessage, ProgressReporter
 from .vision import ScreenRegion, VisionEncoder
 
 
@@ -35,13 +35,24 @@ class TrainingBundle:
     novelty: NoveltyConfig
 
 
+@dataclass(slots=True)
+class GenerationStats:
+    generation: int
+    best: float
+    mean: float
+    std: float
+    epsilon: float
+    temperature: float
+    mutation_std: float
+    note: str
+
+
 class EvolutionTrainer:
     def __init__(
         self,
         config: TrainingBundle,
         region: ScreenRegion,
         executor: ActionExecutor,
-        progress_log: Path | None = None,
     ) -> None:
         self.cfg = config
         self.encoder = VisionEncoder(region=region, config=config.vision)
@@ -54,7 +65,6 @@ class EvolutionTrainer:
         )
         self.evolver = Evolver(config.agent, config.evolution)
         self._novelty_archive: list[np.ndarray] = []
-        self._progress_log = progress_log
 
     def run(self) -> None:
         if self.cfg.vision.wait_for_boot_screen:
@@ -66,6 +76,7 @@ class EvolutionTrainer:
         population = self.evolver.initial_population()
         best_seen = float("-inf")
         stagnation = 0
+        history: list[GenerationStats] = []
 
         if self.cfg.runtime.resume_from is not None:
             start_generation, genome = load_genome(self.cfg.runtime.resume_from)
@@ -73,50 +84,52 @@ class EvolutionTrainer:
                 print(f"resumed_from_generation={start_generation} fitness={genome.fitness:.3f}")
             population[0] = genome
 
-        with ProgressReporter(self._progress_log) as reporter:
-            for generation in range(start_generation, self.cfg.evolution.generations):
-                epsilon, temperature = self._exploration_params(generation)
-                for genome in population:
-                    genome.fitness = self._evaluate_genome(genome, epsilon=epsilon, temperature=temperature)
+        for generation in range(start_generation, self.cfg.evolution.generations):
+            epsilon, temperature = self._exploration_params(generation)
+            for genome in population:
+                genome.fitness = self._evaluate_genome(genome, epsilon=epsilon, temperature=temperature)
 
-                best = max(population, key=lambda g: g.fitness)
-                fitnesses = [g.fitness for g in population]
-                mean_fitness = float(np.mean(fitnesses))
-                std_fitness = float(np.std(fitnesses))
+            best = max(population, key=lambda g: g.fitness)
+            fitnesses = [g.fitness for g in population]
+            mean_fitness = float(np.mean(fitnesses))
+            std_fitness = float(np.std(fitnesses))
 
-                note = self._progress_note(best_seen, best.fitness, stagnation)
-                reporter.write(
-                    ProgressMessage(
-                        generation=generation,
-                        best_fitness=best.fitness,
-                        mean_fitness=mean_fitness,
-                        std_fitness=std_fitness,
-                        epsilon=epsilon,
-                        temperature=temperature,
-                        mutation_std=self.evolver.current_mutation_std,
-                        novelty_archive=len(self._novelty_archive),
-                        note=note,
-                    )
+            note = self._progress_note(best_seen, best.fitness, stagnation)
+            history.append(
+                GenerationStats(
+                    generation=generation,
+                    best=best.fitness,
+                    mean=mean_fitness,
+                    std=std_fitness,
+                    epsilon=epsilon,
+                    temperature=temperature,
+                    mutation_std=self.evolver.current_mutation_std,
+                    note=note,
                 )
+            )
 
-                if best.fitness > best_seen:
-                    best_seen = best.fitness
+            if best.fitness > best_seen:
+                best_seen = best.fitness
+                stagnation = 0
+            else:
+                stagnation += 1
+                if stagnation >= self.cfg.evolution.stagnation_generations:
+                    boosted = min(
+                        self.cfg.evolution.max_mutation_std,
+                        self.evolver.current_mutation_std * self.cfg.evolution.mutation_boost,
+                    )
+                    self.evolver.current_mutation_std = boosted
                     stagnation = 0
-                else:
-                    stagnation += 1
-                    if stagnation >= self.cfg.evolution.stagnation_generations:
-                        boosted = min(
-                            self.cfg.evolution.max_mutation_std,
-                            self.evolver.current_mutation_std * self.cfg.evolution.mutation_boost,
-                        )
-                        self.evolver.current_mutation_std = boosted
-                        stagnation = 0
 
-                if generation % self.cfg.runtime.checkpoint_every == 0:
-                    ckpt = self.cfg.runtime.checkpoint_dir / f"best_gen_{generation:04d}.npz"
-                    save_genome(ckpt, best, generation)
+            if generation % self.cfg.runtime.checkpoint_every == 0:
+                ckpt = self.cfg.runtime.checkpoint_dir / f"best_gen_{generation:04d}.npz"
+                save_genome(ckpt, best, generation)
 
-                population = self.evolver.next_generation(population)
+            population = self.evolver.next_generation(population)
+
+        report_path = self._write_training_report(history)
+        if self.cfg.runtime.verbose:
+            print(f"training_report={report_path}")
 
     def _evaluate_genome(self, genome: Genome, epsilon: float, temperature: float) -> float:
         scores: list[float] = []
@@ -196,3 +209,52 @@ class EvolutionTrainer:
         if stagnation == 0:
             return "matching_best"
         return f"stagnant_{stagnation}"
+
+    def _write_training_report(self, history: list[GenerationStats]) -> Path:
+        self.cfg.runtime.report_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = self.cfg.runtime.report_dir / f"run_report_{stamp}.txt"
+
+        if not history:
+            path.write_text("No generations were run.\n", encoding="utf-8")
+            return path
+
+        best_entry = max(history, key=lambda x: x.best)
+        last = history[-1]
+
+        next_focus: list[str] = []
+        if last.note.startswith("stagnant"):
+            next_focus.append("Improve exploration: raise novelty weight or reduce epsilon decay.")
+        if last.std < 0.05:
+            next_focus.append("Population collapsed: increase immigrants or mutation std.")
+        if last.best - last.mean < 0.2:
+            next_focus.append("Top genome edge is small: increase population or episode length.")
+        if not next_focus:
+            next_focus.append("Continue current settings and resume from latest checkpoint.")
+
+        lines = [
+            "Kingdom Rush Training Report",
+            "============================",
+            f"Generations run: {len(history)}",
+            f"Best fitness overall: {best_entry.best:.4f} (generation {best_entry.generation})",
+            f"Last generation best/mean/std: {last.best:.4f} / {last.mean:.4f} / {last.std:.4f}",
+            f"Last epsilon/temperature: {last.epsilon:.4f} / {last.temperature:.4f}",
+            f"Last mutation std: {last.mutation_std:.6f}",
+            f"Last status note: {last.note}",
+            "",
+            "What to work on at resume:",
+        ]
+        for item in next_focus:
+            lines.append(f"- {item}")
+
+        lines.append("")
+        lines.append("Per-generation summary:")
+        for entry in history:
+            lines.append(
+                f"gen={entry.generation:04d} best={entry.best:.4f} mean={entry.mean:.4f} "
+                f"std={entry.std:.4f} eps={entry.epsilon:.4f} temp={entry.temperature:.4f} "
+                f"mut={entry.mutation_std:.6f} note={entry.note}"
+            )
+
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return path

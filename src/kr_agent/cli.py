@@ -73,15 +73,11 @@ def parse_args() -> argparse.Namespace:
 
     # Runtime
     parser.add_argument("--checkpoint-dir", type=Path, default=Path("checkpoints"))
+    parser.add_argument("--report-dir", type=Path, default=Path("reports"))
     parser.add_argument("--checkpoint-every", type=int, default=1)
     parser.add_argument("--resume-from", type=Path)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--actions-file", type=Path, help="JSON file with action list")
-    parser.add_argument(
-        "--progress-log",
-        type=Path,
-        help="Write progress updates to a text file (also echoed to stdout)",
-    )
 
     return parser.parse_args()
 
@@ -135,6 +131,7 @@ def main() -> None:
     )
     runtime_cfg = RuntimeConfig(
         checkpoint_dir=args.checkpoint_dir,
+        report_dir=args.report_dir,
         checkpoint_every=args.checkpoint_every,
         resume_from=args.resume_from,
         dry_run=args.dry_run,
@@ -163,7 +160,6 @@ def main() -> None:
         config=bundle,
         region=ScreenRegion(args.left, args.top, args.width, args.height),
         executor=ActionExecutor(actions, dry_run=args.dry_run),
-        progress_log=args.progress_log,
     )
     trainer.run()
 

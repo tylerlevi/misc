@@ -76,6 +76,7 @@ class EvolutionConfig:
 @dataclass(slots=True)
 class RuntimeConfig:
     checkpoint_dir: Path = Path("checkpoints")
+    report_dir: Path = Path("reports")
     checkpoint_every: int = 1
     resume_from: Path | None = None
     dry_run: bool = False
