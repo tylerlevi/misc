@@ -10,6 +10,7 @@ from .models import (
     CombatAction,
     CombatState,
 )
+from .performance import GameResult, ImprovementCoach, PerformanceSummary, PerformanceTracker
 from .strategy import EconomyReport, MovementOption, RiskReport, StrategyAdvisor
 from .training import EvolutionTuner
 from .units import UNIT_INDEX, UnitProfile, unit_profile
@@ -26,9 +27,13 @@ __all__ = [
     "DominatorBot",
     "EconomyReport",
     "EvolutionTuner",
+    "GameResult",
     "HeroArmyState",
+    "ImprovementCoach",
     "LowLevelCommand",
     "MovementOption",
+    "PerformanceSummary",
+    "PerformanceTracker",
     "Point",
     "Rect",
     "RiskReport",
@@ -37,7 +42,6 @@ __all__ = [
     "UNIT_INDEX",
     "UiCommander",
     "UiLayout",
-    "UNIT_INDEX",
     "UnitProfile",
     "VISUAL_SIGNATURES",
     "VisualSignature",

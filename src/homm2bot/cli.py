@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from .automation import AdventureSnapshot, HeroArmyState, TownState
 from .bot import DominatorBot
 from .models import AdventureAction, AdventureState, ArmyStack, CombatState
+from .performance import GameResult, PerformanceTracker
 from .strategy import MovementOption
 from .training import EvolutionTuner
 from .units import UNIT_INDEX
@@ -11,6 +14,9 @@ from .units import UNIT_INDEX
 def main() -> None:
     bot = DominatorBot.default()
     improved = EvolutionTuner(seed=42).improve(bot, generations=30)
+
+    tracker = PerformanceTracker(store_path=str(Path("data") / "performance_history.json"))
+    learned, summary = improved.with_learning_from_history(tracker)
 
     adventure_state = AdventureState(
         day=2,
@@ -37,11 +43,11 @@ def main() -> None:
         morale=0.0,
     )
 
-    next_adv = improved.pick_adventure_action(adventure_state, adventure_actions)
-    next_fight = improved.pick_combat_action(combat_state)
+    next_adv = learned.pick_adventure_action(adventure_state, adventure_actions)
+    next_fight = learned.pick_combat_action(combat_state)
 
-    risk = improved.assess_engagement_risk(combat_state.friendly, combat_state.enemy)
-    econ = improved.strategy.economy_projection(adventure_state, controlled_sites=("gold_mine", "sawmill", "ore_pit"))
+    risk = learned.assess_engagement_risk(combat_state.friendly, combat_state.enemy)
+    econ = learned.strategy.economy_projection(adventure_state, controlled_sites=("gold_mine", "sawmill", "ore_pit"))
 
     snapshot = AdventureSnapshot(
         state=adventure_state,
@@ -66,13 +72,20 @@ def main() -> None:
             MovementOption(0.67, 0.39, "scout_fog", reward=0.9, risk=0.02, movement_cost=7, guarded=False, on_road=True, fog_reveal=0.9),
         ),
     )
-    turn_commands = improved.plan_turn_commands(snapshot, target_map_xy=(0.56, 0.47))
+    turn_commands = learned.plan_turn_commands(snapshot, target_map_xy=(0.56, 0.47))
+
+    # Simulated post-game feedback example.
+    learned.record_game_result(
+        tracker,
+        GameResult(won=True, score_delta=1.35, turns=17, towns_controlled=3, final_army_power=6400, losses_ratio=0.29),
+    )
 
     print(f"Adventure action: {next_adv.kind}")
     print(f"Combat action: {next_fight.kind}, target={next_fight.target}")
     print(f"Known unit profiles: {len(UNIT_INDEX)}")
     print(f"Risk win probability: {risk.win_probability:.2%}, expected loss ratio: {risk.expected_army_loss_ratio:.2%}")
     print(f"Projected weekly gold: {econ.weekly_gold}, wood/day: {econ.wood_per_day}, ore/day: {econ.ore_per_day}")
+    print(f"Historical games tracked: {summary.games}, rolling win rate: {summary.win_rate:.2%}")
     print(f"Synthesized UI commands: {len(turn_commands)}")
     for command in turn_commands[:5]:
         print(f"- {command.op} {command.arg} @ {command.at}")

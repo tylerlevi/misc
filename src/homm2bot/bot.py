@@ -6,6 +6,7 @@ from .automation import AdventureSnapshot, LowLevelCommand, UiCommander
 from .macro import MacroPlanner, MacroWeights
 from .micro import MicroPlanner, MicroWeights
 from .models import AdventureAction, AdventureState, ArmyStack, CombatAction, CombatState
+from .performance import GameResult, ImprovementCoach, PerformanceSummary, PerformanceTracker
 from .strategy import RiskReport, StrategyAdvisor
 
 
@@ -20,9 +21,13 @@ class DominatorBot:
 
     @classmethod
     def default(cls) -> "DominatorBot":
+        """Powerhouse baseline from game 1; no warmup needed."""
         return cls(
-            macro=MacroPlanner(depth=5, beam_width=9, weights=MacroWeights(1.15, 0.95, 0.9, 1.55, 0.55)),
-            micro=MicroPlanner(depth=4, weights=MicroWeights(attrition=1.2, morale=0.22, speed_bonus=0.24, target_priority=0.45, trade_efficiency=0.4)),
+            macro=MacroPlanner(depth=6, beam_width=11, weights=MacroWeights(1.2, 1.0, 0.95, 1.65, 0.5)),
+            micro=MicroPlanner(
+                depth=5,
+                weights=MicroWeights(attrition=1.25, morale=0.24, speed_bonus=0.26, target_priority=0.5, trade_efficiency=0.45),
+            ),
             ui=UiCommander(),
             strategy=StrategyAdvisor(),
         )
@@ -50,3 +55,26 @@ class DominatorBot:
         enemy: tuple[ArmyStack, ...],
     ) -> RiskReport:
         return self.strategy.combat_risk(friendly, enemy)
+
+    def with_learning_from_history(
+        self,
+        tracker: PerformanceTracker,
+        coach: ImprovementCoach | None = None,
+    ) -> tuple["DominatorBot", PerformanceSummary]:
+        """Apply conservative long-horizon nudges from aggregate historical performance."""
+        coach = coach or ImprovementCoach()
+        summary = tracker.summarize(window=40)
+
+        nudged_macro = coach.nudge_macro(self.macro.weights, summary)
+        nudged_micro = coach.nudge_micro(self.micro.weights, summary)
+
+        learned = DominatorBot(
+            macro=MacroPlanner(depth=self.macro.depth, beam_width=self.macro.beam_width, weights=nudged_macro),
+            micro=MicroPlanner(depth=self.micro.depth, weights=nudged_micro),
+            ui=self.ui,
+            strategy=self.strategy,
+        )
+        return learned, summary
+
+    def record_game_result(self, tracker: PerformanceTracker, result: GameResult) -> None:
+        tracker.append_result(result)

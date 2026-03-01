@@ -2,19 +2,28 @@
 
 A practical, code-first framework for building a strong **Heroes of Might and Magic II** bot focused on:
 
+- **Powerhouse baseline from game 1** (no weak warmup policy)
 - **Macro dominance** on the adventure map (economy, tempo, expansion, snowballing)
 - **Micro combat control** with tactical search + trade modeling
-- **Continuous improvement** via evolutionary tuning
+- **Long-horizon self-improvement** by measured nudges from many completed games
 - **Unit-aware tactics** powered by a built-in HOMM2 unit encyclopedia
 - **UI-aware command planning** for fixed-resolution fheroes2 window controls
 - **Math-heavy risk assessment** using expected-value and probability scoring
 - **Visual object knowledge** for map/UI recognition and action mapping
 
-> This repo is engine-agnostic but includes a concrete command-synthesis layer calibrated to the windowed UI layout shown in your screenshots.
+## Design goal
+
+This bot is designed to be **strong immediately**, then improve conservatively:
+
+1. **Strong defaults** are used from the first game (deep macro beam + deep micro search).
+2. **Performance tracking** stores outcomes across many games.
+3. **Improvement coach** applies tiny weight nudges from rolling metrics (win rate, losses, game tempo), preventing chaotic drift.
+
+So the behavior is not a jumbled evolving mess: it starts sharp, then adapts slowly and measurably.
 
 ## Data-informed strategy upgrade
 
-The bot now uses game data and strategy patterns to drive decisions:
+The bot uses game data and strategy patterns to drive decisions:
 
 - **Raw game data sources (online)**
   - fheroes2 `buildinginfo.cpp`: building costs and tech structure
@@ -35,7 +44,7 @@ The bot now uses game data and strategy patterns to drive decisions:
 - Used by both strategic and tactical evaluation.
 
 ### 2) Visual recognition knowledge (`vision_knowledge.py`)
-- Contains canonical visual signatures for key controls and map objects:
+- Canonical visual signatures for key controls and map objects:
   - castle/hero/end-turn buttons
   - town build slots / hero stack slots
   - mines, chests, and neutral guards
@@ -70,10 +79,14 @@ The bot now uses game data and strategy patterns to drive decisions:
   4. chooses movement target from risk/reward options
   5. clicks target map position and ends turn
 
-### 7) Improvement loop (`EvolutionTuner`)
-- Mutates planner weights.
-- Scores candidates across multiple macro and micro scenarios.
-- Keeps stronger variants over generations.
+### 7) Long-horizon improvement (`performance.py`)
+- Stores game results to persistent history (`data/performance_history.json`).
+- Summarizes rolling performance windows.
+- Applies conservative coach nudges to macro/micro weights based on real outcomes.
+
+### 8) Evolution loop (`training.py`)
+- Optional scenario-based mutation for offline tuning/bootstrap.
+- Can be combined with performance-history nudges for robust + stable learning.
 
 ## Quick start
 
@@ -97,6 +110,9 @@ pytest
    - `DominatorBot.assess_engagement_risk(...)`
 3. Use UI command core:
    - `DominatorBot.plan_turn_commands(snapshot, target_map_xy)`
-4. Execute `LowLevelCommand`s via your input driver (Win32, pyautogui, etc.).
+4. Record completed game outcomes:
+   - `DominatorBot.record_game_result(...)`
+5. Apply rolling, conservative improvements:
+   - `DominatorBot.with_learning_from_history(...)`
 
 Because this layout is fixed-window, command coordinates are deterministic and can be calibrated once per machine/profile.

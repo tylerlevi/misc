@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from homm2bot.automation import AdventureSnapshot, HeroArmyState, TownState
 from homm2bot.bot import DominatorBot
 from homm2bot.models import AdventureAction, AdventureState, ArmyStack, CombatAction, CombatState
+from homm2bot.performance import GameResult, PerformanceTracker
 from homm2bot.strategy import MovementOption
 from homm2bot.training import EvolutionTuner
 from homm2bot.units import unit_profile
@@ -88,6 +91,21 @@ def test_movement_planner_prefers_high_value_road_target() -> None:
     )
     assert choice is not None
     assert choice.label == "mine_push"
+
+
+def test_history_learning_nudges_from_many_games(tmp_path: Path) -> None:
+    bot = DominatorBot.default()
+    tracker = PerformanceTracker(store_path=str(tmp_path / "history.json"))
+
+    for _ in range(12):
+        bot.record_game_result(
+            tracker,
+            GameResult(won=False, score_delta=-0.7, turns=26, towns_controlled=1, final_army_power=1800, losses_ratio=0.62),
+        )
+
+    learned, summary = bot.with_learning_from_history(tracker)
+    assert summary.games == 12
+    assert learned.macro.weights.safety >= bot.macro.weights.safety
 
 
 def test_ui_turn_script_synthesizes_castle_hero_and_map_actions() -> None:
