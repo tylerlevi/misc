@@ -79,16 +79,14 @@ class UiCommander:
     )
 
     def build_town_plan(self, town: TownState) -> TownBuildPlan | None:
-        """Pick highest-value building using opening books + ROI + strategic priorities."""
         if not town.available_builds:
             return None
 
-        # Opening-book bias for week 1.
         if town.current_day <= 7:
             opening = OPENING_BUILD_ORDERS.get(town.faction, OPENING_BUILD_ORDERS["default"])
             for build in opening:
                 if build in town.available_builds and build not in town.built_buildings:
-                    slot = min(town.available_builds.index(build), len(self.layout.town_build_slots) - 1)
+                    slot = min(town.available_builds.index(build), len(self.layout.castle_build_grid) - 1)
                     return TownBuildPlan(build=build, ui_slot=slot)
 
         current_income = BUILD_DAILY_INCOME_GOLD["village_hall"]
@@ -103,8 +101,22 @@ class UiCommander:
 
         ranked.sort(key=lambda item: item[0], reverse=True)
         best_build = ranked[0][1]
-        slot = min(town.available_builds.index(best_build), len(self.layout.town_build_slots) - 1)
+        slot = min(town.available_builds.index(best_build), len(self.layout.castle_build_grid) - 1)
         return TownBuildPlan(build=best_build, ui_slot=slot)
+
+    def town_upgrade_flow(self, town: TownState) -> tuple[LowLevelCommand, ...]:
+        """From map view, open town -> open castle options -> choose build -> confirm dialog."""
+        plan = self.build_town_plan(town)
+        if not plan:
+            return tuple()
+        tile = self.layout.castle_build_grid[plan.ui_slot].center()
+        return (
+            LowLevelCommand("click", self.layout.btn_castle.center(), "open_town"),
+            LowLevelCommand("click", self.layout.btn_castle.center(), "open_town_twice"),
+            LowLevelCommand("click", self.layout.town_castle_icon.center(), "open_castle_options"),
+            LowLevelCommand("click", tile, f"inspect_build:{plan.build}"),
+            LowLevelCommand("click", self.layout.build_dialog_ok.center(), f"confirm_build:{plan.build}"),
+        )
 
     def army_split_plan(self, hero: HeroArmyState) -> tuple[ArmySplitPlan, ...]:
         plans: list[ArmySplitPlan] = []
@@ -148,19 +160,10 @@ class UiCommander:
 
         if snapshot.visible_labels:
             visible = self.classify_visible_objects(snapshot.visible_labels)
-            commands.append(LowLevelCommand("annotate", None, f"visible:{','.join(visible[:4])}"))
+            commands.append(LowLevelCommand("annotate", None, f"visible:{','.join(visible[:6])}"))
 
         if snapshot.town:
-            town_plan = self.build_town_plan(snapshot.town)
-            if town_plan:
-                commands.append(LowLevelCommand("click", self.layout.btn_castle.center(), "open_castle"))
-                commands.append(
-                    LowLevelCommand(
-                        "click",
-                        self.layout.town_build_slots[town_plan.ui_slot].center(),
-                        f"build:{town_plan.build}",
-                    )
-                )
+            commands.extend(self.town_upgrade_flow(snapshot.town))
 
         if snapshot.hero_army:
             commands.append(LowLevelCommand("click", self.layout.btn_hero.center(), "open_hero"))

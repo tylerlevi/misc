@@ -13,94 +13,54 @@ class VisualSignature:
     interaction: str
 
 
-# Human-curated visual knowledge for "what things look like" in fixed-window fheroes2.
-# Used as a bridge between screen parsing labels and control strategy.
 VISUAL_SIGNATURES: dict[str, VisualSignature] = {
-    "castle_button": VisualSignature(
-        key="castle_button",
-        screen="right_panel",
-        shape_hint="square icon with town skyline",
-        color_hint="red/brown masonry",
-        texture_hint="beveled brass frame",
-        interaction="click to open town screen",
-    ),
-    "hero_button": VisualSignature(
-        key="hero_button",
-        screen="right_panel",
-        shape_hint="square icon with mounted/hero figure",
-        color_hint="tan/brown silhouette",
-        texture_hint="beveled brass frame",
-        interaction="click to open hero screen",
-    ),
-    "end_turn_button": VisualSignature(
-        key="end_turn_button",
-        screen="right_panel",
-        shape_hint="hourglass icon",
-        color_hint="sand/yellow glass",
-        texture_hint="ornate gold border",
-        interaction="click to end current turn",
-    ),
-    "town_build_slot": VisualSignature(
-        key="town_build_slot",
-        screen="castle",
-        shape_hint="rectangular carved frame with empty/occupied construction slot",
-        color_hint="tan stone",
-        texture_hint="engraved relief",
-        interaction="click to build highlighted structure",
-    ),
-    "hero_stack_slot": VisualSignature(
-        key="hero_stack_slot",
-        screen="hero",
-        shape_hint="unit portrait slot with count text",
-        color_hint="unit-dependent with red frame accents",
-        texture_hint="polished wood/gold",
-        interaction="drag between slots to split or merge stacks",
-    ),
-    "gold_mine": VisualSignature(
-        key="gold_mine",
-        screen="adventure_map",
-        shape_hint="mine entrance with ore/gold motif",
-        color_hint="gray rock with yellow accents",
-        texture_hint="mountain-side cave",
-        interaction="high-priority capture for +1000 gold/day",
-    ),
-    "sawmill": VisualSignature(
-        key="sawmill",
-        screen="adventure_map",
-        shape_hint="wooden mill building with logs",
-        color_hint="brown timber",
-        texture_hint="saw platform",
-        interaction="capture for +2 wood/day",
-    ),
-    "ore_pit": VisualSignature(
-        key="ore_pit",
-        screen="adventure_map",
-        shape_hint="rock pit with excavated boulders",
-        color_hint="gray-brown",
-        texture_hint="open quarry",
-        interaction="capture for +2 ore/day",
-    ),
-    "treasure_chest": VisualSignature(
-        key="treasure_chest",
-        screen="adventure_map",
-        shape_hint="small chest sprite",
-        color_hint="gold/yellow",
-        texture_hint="bright highlight",
-        interaction="pickup for tempo gold/xp",
-    ),
-    "neutral_guard": VisualSignature(
-        key="neutral_guard",
-        screen="adventure_map",
-        shape_hint="unit sprite standing on path/object",
-        color_hint="varies by creature",
-        texture_hint="animated stack sprite",
-        interaction="evaluate risk before engaging",
-    ),
+    # Right panel controls
+    "castle_button": VisualSignature("castle_button", "right_panel", "square icon with town skyline", "red/brown masonry", "beveled brass frame", "click to open town screen"),
+    "hero_button": VisualSignature("hero_button", "right_panel", "square icon with hero portrait", "tan/brown", "beveled brass frame", "click to open hero screen"),
+    "spellbook_button": VisualSignature("spellbook_button", "right_panel", "square icon with open book", "cream/blue", "beveled brass frame", "click to open spellbook"),
+    "end_turn_button": VisualSignature("end_turn_button", "right_panel", "hourglass icon", "sand/yellow", "ornate gold border", "click to end current turn"),
+
+    # Town / castle screens
+    "town_castle_icon": VisualSignature("town_castle_icon", "town_screen", "large castle crest button", "tan/gold", "engraved stone", "click to open castle upgrades"),
+    "town_recruit_slot": VisualSignature("town_recruit_slot", "town_screen", "horse-head embossed slot", "sand/tan", "carved tile", "click to recruit creatures"),
+    "castle_build_tile": VisualSignature("castle_build_tile", "castle_options", "rectangular building card", "mixed by building", "wooden framed tile", "click to inspect/build structure"),
+    "build_dialog_ok": VisualSignature("build_dialog_ok", "build_dialog", "OK button", "tan with dark text", "stone-like button", "confirm construction"),
+    "build_dialog_cancel": VisualSignature("build_dialog_cancel", "build_dialog", "CANCEL button", "tan with dark text", "stone-like button", "cancel construction"),
+
+    # Resources visual forms
+    "resource_wood": VisualSignature("resource_wood", "right_panel", "stacked logs", "brown", "wood grain", "resource recognition/trade decisions"),
+    "resource_ore": VisualSignature("resource_ore", "right_panel", "rock cluster", "gray", "rough stone", "resource recognition/trade decisions"),
+    "resource_mercury": VisualSignature("resource_mercury", "right_panel", "silver vial", "silver/white", "glass shine", "resource recognition/trade decisions"),
+    "resource_sulfur": VisualSignature("resource_sulfur", "right_panel", "yellow mound", "yellow", "powder texture", "resource recognition/trade decisions"),
+    "resource_crystal": VisualSignature("resource_crystal", "right_panel", "blue crystal", "blue", "faceted gem", "resource recognition/trade decisions"),
+    "resource_gems": VisualSignature("resource_gems", "right_panel", "colored gems", "multi-color", "faceted jewels", "resource recognition/trade decisions"),
+    "resource_gold": VisualSignature("resource_gold", "right_panel", "gold piles", "gold", "coin shine", "resource recognition/trade decisions"),
+
+    # Adventure objects
+    "gold_mine": VisualSignature("gold_mine", "adventure_map", "mine entrance", "gray/yellow", "mountain cave", "high-priority capture for +1000 gold/day"),
+    "sawmill": VisualSignature("sawmill", "adventure_map", "mill + logs", "brown timber", "saw platform", "capture for +2 wood/day"),
+    "ore_pit": VisualSignature("ore_pit", "adventure_map", "quarry pit", "gray-brown", "open rock pit", "capture for +2 ore/day"),
+    "treasure_chest": VisualSignature("treasure_chest", "adventure_map", "small chest sprite", "gold/yellow", "bright highlight", "pickup for tempo gold/xp"),
+    "neutral_guard": VisualSignature("neutral_guard", "adventure_map", "unit stack sprite", "varies", "animated creature", "evaluate risk before engaging"),
+    "town": VisualSignature("town", "adventure_map", "large settlement sprite", "faction dependent", "stone walls/buildings", "capture/visit for economy and production"),
+}
+
+
+ALIASES: dict[str, str] = {
+    "castle": "town",
+    "wood": "resource_wood",
+    "ore": "resource_ore",
+    "mercury": "resource_mercury",
+    "sulfur": "resource_sulfur",
+    "crystal": "resource_crystal",
+    "gems": "resource_gems",
+    "gold": "resource_gold",
 }
 
 
 def normalize_visual_key(label: str) -> str:
-    return label.strip().lower().replace(" ", "_")
+    raw = label.strip().lower().replace(" ", "_")
+    return ALIASES.get(raw, raw)
 
 
 def lookup_visual_signature(label: str) -> VisualSignature | None:

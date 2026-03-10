@@ -36,6 +36,13 @@ def test_visual_knowledge_knows_core_objects() -> None:
     assert lookup_visual_signature("castle button") is not None
 
 
+
+
+def test_visual_alias_for_resource_gold() -> None:
+    sig = lookup_visual_signature("gold")
+    assert sig is not None
+    assert sig.key == "resource_gold"
+
 def test_macro_prefers_progress_actions_over_low_impact_play() -> None:
     bot = DominatorBot.default()
     state = sample_adv_state()
@@ -155,8 +162,9 @@ def test_ui_turn_script_synthesizes_castle_hero_and_map_actions() -> None:
     commands = bot.plan_turn_commands(snapshot, (0.5, 0.5))
     labels = [command.arg for command in commands]
     assert any(label and label.startswith("visible:") for label in labels)
-    assert "open_castle" in labels
-    assert any(label and label.startswith("build:") for label in labels)
+    assert "open_town" in labels
+    assert "open_castle_options" in labels
+    assert any(label and label.startswith("confirm_build:") for label in labels)
     assert "open_hero" in labels
     assert "move_hero" in labels
     assert "end_turn" in labels

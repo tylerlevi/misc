@@ -121,3 +121,23 @@ pytest
    - `DominatorBot.with_learning_from_history(...)`
 
 Because this layout is fixed-window, command coordinates are deterministic and can be calibrated once per machine/profile.
+
+## Screen-control mapping for your windowed layout
+
+The control layer now models the exact non-fullscreen flow shown in your screenshots:
+
+1. **Adventure map (heroes2)**
+   - Uses fixed viewport and right-panel controls.
+   - Classifies visible objects (town, mine, chest, guard, resources) from parser labels.
+
+2. **Town screen (heroes3)**
+   - Opens by double-clicking town from the right-panel castle control path.
+   - Uses mapped recruit row and castle icon areas.
+
+3. **Castle options screen (heroes4)**
+   - Uses an explicit build-grid coordinate map to click building tiles deterministically.
+
+4. **Build confirmation dialog (last image)**
+   - Uses dedicated OK/CANCEL button coordinates for reliable confirmation clicks.
+
+Resource appearance knowledge includes wood/ore/mercury/sulfur/crystal/gems/gold icon signatures for UI parsing and decision logic.
