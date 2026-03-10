@@ -100,12 +100,26 @@ def test_movement_planner_uses_object_data() -> None:
     assert choice.object_key == "gold_mine"
 
 
+def test_movement_penalizes_recently_visited_targets() -> None:
+    bot = DominatorBot.default()
+    state = sample_adv_state()
+    choice = bot.strategy.choose_movement_option(
+        state,
+        (
+            MovementOption(0.4, 0.4, "loop_tile", reward=2.8, risk=0.1, movement_cost=6, on_road=True, fog_reveal=0.2, object_key="gold_mine", recently_visited=True),
+            MovementOption(0.45, 0.42, "fresh_tile", reward=2.5, risk=0.1, movement_cost=6, on_road=True, fog_reveal=0.2, object_key="sawmill", recently_visited=False),
+        ),
+    )
+    assert choice is not None
+    assert choice.label == "fresh_tile"
+
+
 def test_opening_build_order_bias() -> None:
     bot = DominatorBot.default()
     plan = bot.ui.build_town_plan(
         TownState(
             available_builds=("marketplace", "dwelling_lvl1", "town_hall"),
-            gold=5000,
+            gold=300,
             wood=5,
             ore=5,
             current_day=2,
@@ -114,7 +128,7 @@ def test_opening_build_order_bias() -> None:
         )
     )
     assert plan is not None
-    assert plan.build == "town_hall"
+    assert plan.build == "dwelling_lvl1"
 
 
 def test_history_learning_nudges_from_many_games(tmp_path: Path) -> None:
@@ -165,6 +179,8 @@ def test_ui_turn_script_synthesizes_castle_hero_and_map_actions() -> None:
     assert "open_town" in labels
     assert "open_castle_options" in labels
     assert any(label and label.startswith("confirm_build:") for label in labels)
+    assert any(label and label.startswith("confirm_build_retry:") for label in labels)
+    assert "open_castle_options_retry" in labels
     assert "open_hero" in labels
     assert "move_hero" in labels
     assert "end_turn" in labels

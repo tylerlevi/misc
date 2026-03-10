@@ -83,3 +83,21 @@ OPENING_BUILD_ORDERS: dict[str, tuple[str, ...]] = {
         "dwelling_lvl3",
     ),
 }
+
+
+# Simplified build costs used for affordability checks in UI planning
+# (gold, wood, ore).
+BUILD_COSTS: dict[str, tuple[int, int, int]] = {
+    "town_hall": (2500, 0, 0),
+    "city_hall": (5000, 0, 0),
+    "capitol": (10000, 0, 0),
+    "marketplace": (500, 5, 0),
+    "blacksmith": (1000, 5, 0),
+    "dwelling_lvl1": (300, 0, 0),
+    "dwelling_lvl2": (800, 5, 0),
+    "dwelling_lvl3": (1000, 0, 5),
+    "dwelling_lvl4": (2000, 10, 10),
+    "dwelling_lvl5": (3000, 10, 0),
+    "dwelling_lvl6": (5000, 20, 0),
+    "mage_guild_1": (2000, 5, 5),
+}

@@ -141,3 +141,11 @@ The control layer now models the exact non-fullscreen flow shown in your screens
    - Uses dedicated OK/CANCEL button coordinates for reliable confirmation clicks.
 
 Resource appearance knowledge includes wood/ore/mercury/sulfur/crystal/gems/gold icon signatures for UI parsing and decision logic.
+
+
+## Pain points addressed
+
+- **Unaffordable build misclicks:** town planner now checks affordability before selecting a build target.
+- **Menu/dialog desync:** town build flow includes retry-safe clicks for castle options and build confirmation.
+- **Route loops / stuck behavior:** movement options support `recently_visited` penalties to avoid repeated low-value loops.
+- **Combat overkill mistakes:** micro scoring now adds lethal-finish bonuses for eliminating enemy stacks cleanly.

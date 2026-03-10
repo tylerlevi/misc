@@ -80,6 +80,7 @@ class MovementOption:
     on_road: bool = False
     fog_reveal: float = 0.0
     object_key: str = "unknown"
+    recently_visited: bool = False
 
 
 class StrategyAdvisor:
@@ -153,7 +154,8 @@ class StrategyAdvisor:
             guard_penalty = 220 if option.guarded else 0
             object_bonus = self.object_base_value(option.object_key) * 140
             move_eff = option.reward / max(1.0, option.movement_cost)
-            score = option.reward * 320 + move_eff * 220 + scouting_bonus + road_bonus + object_bonus - option.risk * 620 - guard_penalty
+            repeat_penalty = 520 if option.recently_visited else 0
+            score = option.reward * 320 + move_eff * 220 + scouting_bonus + road_bonus + object_bonus - option.risk * 620 - guard_penalty - repeat_penalty
             if score > best_score:
                 best_score = score
                 best = option

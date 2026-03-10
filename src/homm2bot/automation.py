@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .domain_data import OPENING_BUILD_ORDERS
+from .domain_data import BUILD_COSTS, OPENING_BUILD_ORDERS
 from .interface import DEFAULT_LAYOUT, Point, UiLayout
 from .models import AdventureAction, AdventureState, ArmyStack
 from .strategy import BUILD_DAILY_INCOME_GOLD, MovementOption, StrategyAdvisor
@@ -78,20 +78,32 @@ class UiCommander:
         "mage_guild_3",
     )
 
+    def _can_afford(self, town: TownState, build: str) -> bool:
+        cost = BUILD_COSTS.get(build)
+        if not cost:
+            return True
+        gold, wood, ore = cost
+        return town.gold >= gold and town.wood >= wood and town.ore >= ore
+
     def build_town_plan(self, town: TownState) -> TownBuildPlan | None:
         if not town.available_builds:
+            return None
+
+        # Pain point: trying unaffordable builds wastes clicks. Filter first.
+        affordable = tuple(build for build in town.available_builds if self._can_afford(town, build))
+        if not affordable:
             return None
 
         if town.current_day <= 7:
             opening = OPENING_BUILD_ORDERS.get(town.faction, OPENING_BUILD_ORDERS["default"])
             for build in opening:
-                if build in town.available_builds and build not in town.built_buildings:
+                if build in affordable and build not in town.built_buildings:
                     slot = min(town.available_builds.index(build), len(self.layout.castle_build_grid) - 1)
                     return TownBuildPlan(build=build, ui_slot=slot)
 
         current_income = BUILD_DAILY_INCOME_GOLD["village_hall"]
         ranked: list[tuple[float, str]] = []
-        for build in town.available_builds:
+        for build in affordable:
             roi_days = self.strategy.building_roi_days(build, current_income)
             priority_bonus = 0.0
             if build in self.TOWN_BUILD_PRIORITY:
@@ -105,7 +117,7 @@ class UiCommander:
         return TownBuildPlan(build=best_build, ui_slot=slot)
 
     def town_upgrade_flow(self, town: TownState) -> tuple[LowLevelCommand, ...]:
-        """From map view, open town -> open castle options -> choose build -> confirm dialog."""
+        """Map -> town -> castle options -> build tile -> confirm, with retry-safe clicks."""
         plan = self.build_town_plan(town)
         if not plan:
             return tuple()
@@ -114,8 +126,10 @@ class UiCommander:
             LowLevelCommand("click", self.layout.btn_castle.center(), "open_town"),
             LowLevelCommand("click", self.layout.btn_castle.center(), "open_town_twice"),
             LowLevelCommand("click", self.layout.town_castle_icon.center(), "open_castle_options"),
+            LowLevelCommand("click", self.layout.town_castle_icon.center(), "open_castle_options_retry"),
             LowLevelCommand("click", tile, f"inspect_build:{plan.build}"),
             LowLevelCommand("click", self.layout.build_dialog_ok.center(), f"confirm_build:{plan.build}"),
+            LowLevelCommand("click", self.layout.build_dialog_ok.center(), f"confirm_build_retry:{plan.build}"),
         )
 
     def army_split_plan(self, hero: HeroArmyState) -> tuple[ArmySplitPlan, ...]:

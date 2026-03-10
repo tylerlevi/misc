@@ -59,6 +59,7 @@ class MicroPlanner:
 
         expected_kills = self._expected_kills(state, action.target)
         trade_score = expected_kills * target.hp * self.weights.trade_efficiency
+        lethal_bonus = 18.0 if expected_kills >= target.count else 0.0
 
         retaliation_risk = 0.0
         if profile and not profile.no_enemy_retaliation:
@@ -67,7 +68,7 @@ class MicroPlanner:
         threat_component = (target.power ** 0.5) * (threat_weight**2) * self.weights.target_priority
         shooter_focus = 12.0 if profile and profile.shooter else 0.0
         caster_focus = 6.0 if profile and profile.has_spellcast else 0.0
-        return threat_component + shooter_focus + caster_focus + trade_score - retaliation_risk
+        return threat_component + shooter_focus + caster_focus + trade_score + lethal_bonus - retaliation_risk
 
     def _expected_kills(self, state: CombatState, target_index: int) -> float:
         if not (0 <= target_index < len(state.enemy)):
