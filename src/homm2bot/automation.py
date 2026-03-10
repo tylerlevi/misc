@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .domain_data import OPENING_BUILD_ORDERS
 from .interface import DEFAULT_LAYOUT, Point, UiLayout
 from .models import AdventureAction, AdventureState, ArmyStack
 from .strategy import BUILD_DAILY_INCOME_GOLD, MovementOption, StrategyAdvisor
@@ -23,6 +24,8 @@ class TownState:
     wood: int
     ore: int
     current_day: int
+    faction: str = "default"
+    built_buildings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -76,9 +79,17 @@ class UiCommander:
     )
 
     def build_town_plan(self, town: TownState) -> TownBuildPlan | None:
-        """Pick highest-value building using ROI and tempo-aware priority list."""
+        """Pick highest-value building using opening books + ROI + strategic priorities."""
         if not town.available_builds:
             return None
+
+        # Opening-book bias for week 1.
+        if town.current_day <= 7:
+            opening = OPENING_BUILD_ORDERS.get(town.faction, OPENING_BUILD_ORDERS["default"])
+            for build in opening:
+                if build in town.available_builds and build not in town.built_buildings:
+                    slot = min(town.available_builds.index(build), len(self.layout.town_build_slots) - 1)
+                    return TownBuildPlan(build=build, ui_slot=slot)
 
         current_income = BUILD_DAILY_INCOME_GOLD["village_hall"]
         ranked: list[tuple[float, str]] = []
@@ -96,7 +107,6 @@ class UiCommander:
         return TownBuildPlan(build=best_build, ui_slot=slot)
 
     def army_split_plan(self, hero: HeroArmyState) -> tuple[ArmySplitPlan, ...]:
-        """Split shooters into additional stacks for better focus-fire/micro tempo."""
         plans: list[ArmySplitPlan] = []
         for slot_idx, stack in enumerate(hero.stacks[: len(self.layout.hero_stack_slots)]):
             profile = unit_profile(stack.name)
@@ -108,7 +118,6 @@ class UiCommander:
         return tuple(plans)
 
     def movement_click(self, normalized_x: float, normalized_y: float) -> Point:
-        """Convert normalized map target (0..1,0..1) to screen coordinate in world viewport."""
         clamped_x = max(0.0, min(1.0, normalized_x))
         clamped_y = max(0.0, min(1.0, normalized_y))
         view = self.layout.world_view
@@ -117,7 +126,6 @@ class UiCommander:
         return Point(px, py)
 
     def classify_visible_objects(self, labels: tuple[str, ...]) -> tuple[str, ...]:
-        """Map parser labels to known visual signatures so planner can reason about object types."""
         resolved: list[str] = []
         for label in labels:
             sig = lookup_visual_signature(label)
@@ -136,7 +144,6 @@ class UiCommander:
         snapshot: AdventureSnapshot,
         target_map_xy: tuple[float, float],
     ) -> tuple[LowLevelCommand, ...]:
-        """Create executable click/drag sequence that synergizes town, hero, and map controls."""
         commands: list[LowLevelCommand] = []
 
         if snapshot.visible_labels:

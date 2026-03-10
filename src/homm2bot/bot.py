@@ -64,9 +64,10 @@ class DominatorBot:
         """Apply conservative long-horizon nudges from aggregate historical performance."""
         coach = coach or ImprovementCoach()
         summary = tracker.summarize(window=40)
+        trend = tracker.win_rate_trend(window=20)
 
-        nudged_macro = coach.nudge_macro(self.macro.weights, summary)
-        nudged_micro = coach.nudge_micro(self.micro.weights, summary)
+        nudged_macro = coach.nudge_macro(self.macro.weights, summary, trend=trend)
+        nudged_micro = coach.nudge_micro(self.micro.weights, summary, trend=trend)
 
         learned = DominatorBot(
             macro=MacroPlanner(depth=self.macro.depth, beam_width=self.macro.beam_width, weights=nudged_macro),

@@ -81,10 +81,15 @@ The bot uses game data and strategy patterns to drive decisions:
 
 ### 7) Long-horizon improvement (`performance.py`)
 - Stores game results to persistent history (`data/performance_history.json`).
-- Summarizes rolling performance windows.
+- Summarizes rolling performance windows and trend direction.
 - Applies conservative coach nudges to macro/micro weights based on real outcomes.
+- Requires sufficient sample size before nudging (stability-first).
 
-### 8) Evolution loop (`training.py`)
+### 8) Domain data (`domain_data.py`)
+- Object value priors for mines/chests/artifacts/towns and other map entities.
+- Faction-specific opening build orders used in week 1 town planning.
+
+### 9) Evolution loop (`training.py`)
 - Optional scenario-based mutation for offline tuning/bootstrap.
 - Can be combined with performance-history nudges for robust + stable learning.
 

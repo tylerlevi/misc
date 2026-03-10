@@ -61,43 +61,49 @@ class PerformanceTracker:
             avg_losses_ratio=mean(row.losses_ratio for row in scope),
         )
 
+    def win_rate_trend(self, window: int = 20) -> float:
+        """Recent-half win rate minus previous-half win rate."""
+        rows = self.load_results()
+        if len(rows) < window * 2:
+            return 0.0
+        recent = rows[-window:]
+        previous = rows[-window * 2 : -window]
+        recent_rate = sum(1 for row in recent if row.won) / len(recent)
+        prev_rate = sum(1 for row in previous if row.won) / len(previous)
+        return recent_rate - prev_rate
+
 
 class ImprovementCoach:
     """Applies small, stable weight nudges based on rolling performance metrics."""
 
-    def nudge_macro(self, base: MacroWeights, summary: PerformanceSummary) -> MacroWeights:
-        if summary.games < 8:
+    def nudge_macro(self, base: MacroWeights, summary: PerformanceSummary, trend: float = 0.0) -> MacroWeights:
+        if summary.games < 12:
             return base
 
-        # Conservative gradient-style updates: strong from game 1, tiny adaptation later.
         win_gap = 0.62 - summary.win_rate
         speed_gap = summary.avg_turns - 20.0
+        trend_dampen = 1.0 - max(0.0, trend)
 
-        economy = max(0.2, base.economy + 0.05 * win_gap)
-        tempo = max(0.2, base.tempo + 0.03 * speed_gap / 10.0)
-        safety = max(0.2, base.safety + 0.06 * summary.avg_losses_ratio)
-        snowball = max(0.2, base.snowball + 0.04 * win_gap)
-        risk_penalty = max(0.1, base.risk_penalty + 0.05 * summary.avg_losses_ratio - 0.03 * summary.win_rate)
-        return MacroWeights(
-            economy=economy,
-            tempo=tempo,
-            safety=safety,
-            snowball=snowball,
-            risk_penalty=risk_penalty,
-        )
+        economy = max(0.2, base.economy + 0.04 * win_gap * trend_dampen)
+        tempo = max(0.2, base.tempo + 0.025 * speed_gap / 10.0)
+        safety = max(0.2, base.safety + 0.05 * summary.avg_losses_ratio)
+        snowball = max(0.2, base.snowball + 0.035 * win_gap * trend_dampen)
+        risk_penalty = max(0.1, base.risk_penalty + 0.045 * summary.avg_losses_ratio - 0.025 * summary.win_rate)
+        return MacroWeights(economy=economy, tempo=tempo, safety=safety, snowball=snowball, risk_penalty=risk_penalty)
 
-    def nudge_micro(self, base: MicroWeights, summary: PerformanceSummary) -> MicroWeights:
-        if summary.games < 8:
+    def nudge_micro(self, base: MicroWeights, summary: PerformanceSummary, trend: float = 0.0) -> MicroWeights:
+        if summary.games < 12:
             return base
 
         loss_gap = summary.avg_losses_ratio - 0.34
         win_gap = 0.62 - summary.win_rate
+        trend_dampen = 1.0 - max(0.0, trend)
 
-        attrition = max(0.1, base.attrition + 0.05 * win_gap)
-        morale = max(0.05, base.morale + 0.02 * loss_gap)
-        speed_bonus = max(0.05, base.speed_bonus + 0.02 * win_gap)
-        target_priority = max(0.05, base.target_priority + 0.04 * win_gap)
-        trade_efficiency = max(0.05, base.trade_efficiency + 0.05 * loss_gap)
+        attrition = max(0.1, base.attrition + 0.04 * win_gap * trend_dampen)
+        morale = max(0.05, base.morale + 0.018 * loss_gap)
+        speed_bonus = max(0.05, base.speed_bonus + 0.018 * win_gap * trend_dampen)
+        target_priority = max(0.05, base.target_priority + 0.035 * win_gap * trend_dampen)
+        trade_efficiency = max(0.05, base.trade_efficiency + 0.045 * loss_gap)
 
         return MicroWeights(
             attrition=attrition,

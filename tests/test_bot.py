@@ -79,18 +79,35 @@ def test_risk_model_prefers_stronger_army() -> None:
     assert strong.win_probability > weak.win_probability
 
 
-def test_movement_planner_prefers_high_value_road_target() -> None:
+def test_movement_planner_uses_object_data() -> None:
     bot = DominatorBot.default()
     state = sample_adv_state()
     choice = bot.strategy.choose_movement_option(
         state,
         (
-            MovementOption(0.2, 0.3, "safe_low", reward=0.8, risk=0.05, movement_cost=5, on_road=False, fog_reveal=0.1),
-            MovementOption(0.6, 0.5, "mine_push", reward=3.5, risk=0.2, movement_cost=9, on_road=True, fog_reveal=0.4),
+            MovementOption(0.4, 0.4, "sawmill", reward=2.1, risk=0.2, movement_cost=8, on_road=True, fog_reveal=0.2, object_key="sawmill"),
+            MovementOption(0.5, 0.5, "gold", reward=2.1, risk=0.2, movement_cost=8, on_road=True, fog_reveal=0.2, object_key="gold_mine"),
         ),
     )
     assert choice is not None
-    assert choice.label == "mine_push"
+    assert choice.object_key == "gold_mine"
+
+
+def test_opening_build_order_bias() -> None:
+    bot = DominatorBot.default()
+    plan = bot.ui.build_town_plan(
+        TownState(
+            available_builds=("marketplace", "dwelling_lvl1", "town_hall"),
+            gold=5000,
+            wood=5,
+            ore=5,
+            current_day=2,
+            faction="knight",
+            built_buildings=("village_hall",),
+        )
+    )
+    assert plan is not None
+    assert plan.build == "town_hall"
 
 
 def test_history_learning_nudges_from_many_games(tmp_path: Path) -> None:
@@ -119,6 +136,8 @@ def test_ui_turn_script_synthesizes_castle_hero_and_map_actions() -> None:
             wood=5,
             ore=5,
             current_day=1,
+            faction="knight",
+            built_buildings=("village_hall",),
         ),
         hero_army=HeroArmyState(
             stacks=(
@@ -128,8 +147,8 @@ def test_ui_turn_script_synthesizes_castle_hero_and_map_actions() -> None:
         ),
         visible_labels=("gold mine", "neutral guard"),
         movement_options=(
-            MovementOption(0.3, 0.3, "scout", reward=1.0, risk=0.03, movement_cost=6, on_road=True, fog_reveal=0.8),
-            MovementOption(0.6, 0.4, "mine", reward=3.0, risk=0.2, movement_cost=9, on_road=False, fog_reveal=0.2, guarded=True),
+            MovementOption(0.3, 0.3, "scout", reward=1.0, risk=0.03, movement_cost=6, on_road=True, fog_reveal=0.8, object_key="unknown"),
+            MovementOption(0.6, 0.4, "mine", reward=3.0, risk=0.2, movement_cost=9, on_road=False, fog_reveal=0.2, guarded=True, object_key="gold_mine"),
         ),
     )
 

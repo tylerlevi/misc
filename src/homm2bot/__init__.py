@@ -1,6 +1,7 @@
 """HOMM2 bot framework."""
 
 from .automation import AdventureSnapshot, HeroArmyState, LowLevelCommand, TownState, UiCommander
+from .domain_data import OBJECT_VALUE_PRIORS, OPENING_BUILD_ORDERS
 from .bot import DominatorBot
 from .interface import DEFAULT_LAYOUT, Point, Rect, UiLayout
 from .models import (
@@ -18,6 +19,8 @@ from .vision_knowledge import VISUAL_SIGNATURES, VisualSignature, lookup_visual_
 
 __all__ = [
     "AdventureAction",
+    "OBJECT_VALUE_PRIORS",
+    "OPENING_BUILD_ORDERS",
     "AdventureSnapshot",
     "AdventureState",
     "ArmyStack",

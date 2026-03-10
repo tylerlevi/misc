@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 
+from .domain_data import OBJECT_VALUE_PRIORS
 from .models import AdventureAction, AdventureState, ArmyStack, total_power
 from .units import unit_profile
 
@@ -78,6 +79,7 @@ class MovementOption:
     guarded: bool = False
     on_road: bool = False
     fog_reveal: float = 0.0
+    object_key: str = "unknown"
 
 
 class StrategyAdvisor:
@@ -95,7 +97,7 @@ class StrategyAdvisor:
             ore += o
 
         if state.owned_towns >= 2:
-            daily_gold += 750  # multiple-town compounding assumption
+            daily_gold += 750
 
         return EconomyReport(daily_gold=daily_gold, weekly_gold=daily_gold * 7, wood_per_day=wood, ore_per_day=ore)
 
@@ -103,6 +105,9 @@ class StrategyAdvisor:
         build_cost = BUILD_COST_GOLD.get(building, 999999)
         uplift = max(1, BUILD_DAILY_INCOME_GOLD.get(building, current_daily_gold) - current_daily_gold)
         return build_cost / uplift
+
+    def object_base_value(self, object_key: str) -> float:
+        return OBJECT_VALUE_PRIORS.get(object_key, OBJECT_VALUE_PRIORS["unknown"])
 
     def unit_gold_efficiency(self, stack: ArmyStack) -> float:
         profile = unit_profile(stack.name)
@@ -136,7 +141,6 @@ class StrategyAdvisor:
         return RiskReport(win_probability=win_probability, expected_army_loss_ratio=expected_loss, pressure_score=pressure)
 
     def choose_movement_option(self, state: AdventureState, options: tuple[MovementOption, ...]) -> MovementOption | None:
-        """Risk-adjusted movement selector for map tempo and scouting control."""
         if not options:
             return None
         best = None
@@ -147,15 +151,15 @@ class StrategyAdvisor:
             scouting_bonus = option.fog_reveal * 120
             road_bonus = 180 if option.on_road else 0
             guard_penalty = 220 if option.guarded else 0
+            object_bonus = self.object_base_value(option.object_key) * 140
             move_eff = option.reward / max(1.0, option.movement_cost)
-            score = option.reward * 320 + move_eff * 220 + scouting_bonus + road_bonus - option.risk * 620 - guard_penalty
+            score = option.reward * 320 + move_eff * 220 + scouting_bonus + road_bonus + object_bonus - option.risk * 620 - guard_penalty
             if score > best_score:
                 best_score = score
                 best = option
         return best
 
     def strategic_action_score(self, state: AdventureState, action: AdventureAction) -> float:
-        """Risk-adjusted action valuation with tempo weighting from strategy tutorials."""
         early_game = state.day <= 7
         tempo_weight = 1.35 if early_game else 1.0
         econ_weight = 1.2 if action.kind in {"take_mine", "take_town", "recruit"} else 1.0

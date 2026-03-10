@@ -58,6 +58,8 @@ def main() -> None:
             wood=5,
             ore=5,
             current_day=1,
+            faction="knight",
+            built_buildings=("village_hall",),
         ),
         hero_army=HeroArmyState(
             stacks=(
@@ -67,9 +69,9 @@ def main() -> None:
         ),
         visible_labels=("gold mine", "treasure chest", "neutral guard"),
         movement_options=(
-            MovementOption(0.61, 0.44, "gold_mine_path", reward=3.8, risk=0.25, movement_cost=11, guarded=True, on_road=True, fog_reveal=0.3),
-            MovementOption(0.52, 0.48, "chest_pickup", reward=1.4, risk=0.05, movement_cost=6, guarded=False, on_road=False, fog_reveal=0.1),
-            MovementOption(0.67, 0.39, "scout_fog", reward=0.9, risk=0.02, movement_cost=7, guarded=False, on_road=True, fog_reveal=0.9),
+            MovementOption(0.61, 0.44, "gold_mine_path", reward=3.8, risk=0.25, movement_cost=11, guarded=True, on_road=True, fog_reveal=0.3, object_key="gold_mine"),
+            MovementOption(0.52, 0.48, "chest_pickup", reward=1.4, risk=0.05, movement_cost=6, guarded=False, on_road=False, fog_reveal=0.1, object_key="treasure_chest"),
+            MovementOption(0.67, 0.39, "scout_fog", reward=0.9, risk=0.02, movement_cost=7, guarded=False, on_road=True, fog_reveal=0.9, object_key="unknown"),
         ),
     )
     turn_commands = learned.plan_turn_commands(snapshot, target_map_xy=(0.56, 0.47))
